@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">鲸鲸</string>
+    <string name="accessibility_desc">鲸鲸用它观察屏幕并帮你点按/输入，完成你交代的手机操作；熄屏时自动待机。</string>
+</resources>

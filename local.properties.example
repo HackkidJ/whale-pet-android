@@ -1,0 +1,6 @@
+# 复制为 local.properties 后填写（local.properties 已被 .gitignore 排除）
+sdk.dir=/path/to/Android/sdk
+deepseek.apiKey=sk-your-deepseek-key
+volc.apiKey=your-volcengine-api-key
+volc.resourceId=seed-tts-2.0
+volc.voiceType=ICL_uranus_zh_female_bingruoshaonv_tob
