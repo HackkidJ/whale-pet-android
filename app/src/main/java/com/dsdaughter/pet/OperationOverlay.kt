@@ -61,57 +61,53 @@ class OperationOverlay(
         border = borderView
 
         val container = LinearLayout(context).apply {
-            orientation = LinearLayout.VERTICAL
-            background = GradientDrawable().apply {
-                setColor(0xF2191C23.toInt())
-                cornerRadius = dp(18).toFloat()
-                setStroke(dp(1), 0xFF7FD4FF.toInt())
-            }
-            setPadding(dp(14), dp(8), dp(14), dp(10))
-        }
-        val titleRow = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
+            background = GradientDrawable().apply {
+                setColor(0xE6191C23.toInt())
+                cornerRadius = dp(14).toFloat()
+                setStroke(dp(1), 0xFF7FD4FF.toInt())
+            }
+            setPadding(dp(10), dp(1), dp(10), dp(1))
         }
-        titleRow.addView(
+        container.addView(
             TextView(context).apply {
-                text = "鲸鲸正在操作手机"
+                text = "鲸鲸操作中"
                 setTextColor(Color.parseColor("#7FD4FF"))
-                textSize = 13f
-            },
-            LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f),
-        )
-        titleRow.addView(
-            Button(context).apply {
-                text = "停止"
-                textSize = 12f
-                setTextColor(Color.parseColor("#FFFFFF"))
-                background = GradientDrawable().apply {
-                    setColor(0xFF8A3A3A.toInt())
-                    cornerRadius = dp(16).toFloat()
-                }
-                setPadding(dp(14), dp(4), dp(14), dp(4))
-                setOnClickListener { onStop() }
+                textSize = 11f
             },
         )
-        container.addView(titleRow)
         val step = TextView(context).apply {
             text = "正在思考…"
             setTextColor(Color.parseColor("#E7E9EF"))
-            textSize = 12f
-            maxLines = 2
-            setPadding(0, dp(4), 0, 0)
+            textSize = 11f
+            maxLines = 1
+            ellipsize = android.text.TextUtils.TruncateAt.END
+            setPadding(dp(8), 0, dp(8), 0)
         }
         stepView = step
-        container.addView(step)
+        container.addView(step, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
         val elapsed = TextView(context).apply {
-            text = "已操作 0:00"
+            text = "0:00"
             setTextColor(Color.parseColor("#8B93A7"))
-            textSize = 11f
-            setPadding(0, dp(3), 0, 0)
+            textSize = 10f
+            setPadding(0, 0, dp(8), 0)
         }
         elapsedView = elapsed
         container.addView(elapsed)
+        container.addView(
+            TextView(context).apply {
+                text = "停止"
+                textSize = 10f
+                setTextColor(Color.parseColor("#FFFFFF"))
+                background = GradientDrawable().apply {
+                    setColor(0xFF8A3A3A.toInt())
+                    cornerRadius = dp(10).toFloat()
+                }
+                setPadding(dp(10), dp(1), dp(10), dp(1))
+                setOnClickListener { onStop() }
+            },
+        )
         startedAt = System.currentTimeMillis()
         ticker = object : Runnable {
             override fun run() {
@@ -126,24 +122,16 @@ class OperationOverlay(
             WindowManager.LayoutParams.WRAP_CONTENT,
             overlayType(),
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
-                or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+                or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
+                or WindowManager.LayoutParams.FLAG_SECURE,
             android.graphics.PixelFormat.TRANSLUCENT,
         ).apply {
             gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
-            y = dp(44)
+            y = dp(1)
         }
         runCatching { windowManager.addView(container, pillParams) }
         pill = container
-        captureHider = OverlayHider.Hider(
-            hide = {
-                borderView.visibility = View.GONE
-                container.visibility = View.GONE
-            },
-            show = {
-                borderView.visibility = View.VISIBLE
-                container.visibility = View.VISIBLE
-            },
-        ).also { OverlayHider.register(it) }
+
 
         animator = ValueAnimator.ofFloat(0.35f, 0.95f).apply {
             duration = 900
@@ -161,8 +149,6 @@ class OperationOverlay(
     }
 
     fun hide() {
-        captureHider?.let { OverlayHider.unregister(it) }
-        captureHider = null
         ticker?.let { handler.removeCallbacks(it) }
         ticker = null
         animator?.cancel()

@@ -33,6 +33,11 @@ object AccessibilityAgent {
                 else -> "无障碍还没开，先去设置里把「鲸鲸无障碍」打开，我才能看屏幕帮你点。"
             }
         if (!service.screenOn()) return "手机现在锁屏/熄屏了，先亮屏再让我操作。"
+        val cleanedRequest = request
+            .replace(Regex("进入鲸鲸操作|鲸鲸操作|进入操作|帮我操作手机|操作我的手机|操作手机|帮我操作|你操作|去操作"), " ")
+            .replace(Regex("\\s+"), " ")
+            .trim()
+            .ifBlank { request }
         val history = mutableListOf<String>()
         val signatures = mutableListOf<String>()
         var lastScreenshot: Uri? = null
@@ -54,7 +59,7 @@ object AccessibilityAgent {
                     onProgress,
                 )
             }
-            val prompt = buildPrompt(request, snapshot, history, context)
+            val prompt = buildPrompt(cleanedRequest, snapshot, history, context)
             val raw = try {
                 DeepSeekClient.complete(
                     context,
@@ -115,7 +120,12 @@ object AccessibilityAgent {
                     delay(600)
                 }
                 "open_app" -> {
-                    val pkg = resolvePackage(action.packageName) ?: action.packageName
+                    var pkg = resolvePackage(action.packageName) ?: action.packageName
+                    if (pkg == context.packageName || action.packageName.contains("鲸鲸")) {
+                        history.add("第${round + 1}步：不能打开自己（鲸鲸），请直接打开目标 App")
+                        delay(300)
+                        return@repeat
+                    }
                     onProgress("我打开${appName(context, pkg)}…")
                     val ok = openApp(context, pkg)
                     history.add("第${round + 1}步：打开 $pkg → ${if (ok) "请求已发出" else "没装/打不开"}")
@@ -197,7 +207,7 @@ $historyText
 {"action":"input","text":"要输入的文字"}
 {"action":"scroll","direction":"up|down|left|right"}
 {"action":"back"} 或 {"action":"home"}
-{"action":"open_app","package":"应用名或包名"}
+{"action":"open_app","package":"目标应用名或包名（不能填鲸鲸自己）"}
 {"action":"screenshot"}  截图保存到相册
 {"action":"share_image","package":"qq"}  把最近一张截图分享到指定 App
 {"action":"wait"}
