@@ -32,8 +32,9 @@ object VisionPhoneAgent {
         var lastScreenshot: Uri? = null
         repeat(10) { round ->
             if (isCancelled()) return "好，我停下了，没继续操作。"
-            val bitmap = service.captureScreenshot()
+            val bitmap = OverlayHider.withHidden { service.captureScreenshot() }
                 ?: return "这个页面连截图都拿不到（可能被应用禁止截屏），我操作不了。"
+            val modelBitmap = ScreenMask.forModel(context, bitmap)
             onProgress("我截图看看屏幕…")
             val appDesc = AppInfoUtil.describe(context, PetAccessibilityService.lastPackage)
             val prompt = buildPrompt(request, appDesc, bitmap, history)
@@ -42,7 +43,7 @@ object VisionPhoneAgent {
                     context,
                     "你在用截图操作一部 Android 手机。只输出一个 JSON 决策，不要解释。",
                     prompt,
-                    toBase64(bitmap),
+                    toBase64(modelBitmap),
                 )
             } catch (exc: Exception) {
                 return "视觉分析失败：${exc.message ?: "网络错误"}"

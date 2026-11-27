@@ -96,6 +96,6 @@ class PetView(context: Context) : View(context) {
 
     companion object {
         const val COLS = 8
-        const val ROWS = 9
+        const val ROWS = 10
     }
 }

@@ -15,7 +15,7 @@ object ScreenLookup {
                 "我这边无障碍没开，看不到你屏幕。去设置 → 无障碍里把「鲸鲸无障碍」打开。"
         }
         if (!service.screenOn()) return "你手机现在锁屏/熄屏了，亮屏我再看。"
-        val snapshot = service.snapshot()
+        val snapshot = OverlayHider.withHidden { service.snapshot() }
         val tracked = PetAccessibilityService.lastPackage
         val pkg = if (tracked.isNotBlank() && tracked != context.packageName) {
             tracked
@@ -25,9 +25,11 @@ object ScreenLookup {
         val appDesc = AppInfoUtil.describe(context, pkg)
         val chatApp = pkg == "com.tencent.mm" || pkg == "com.tencent.mobileqq"
         if (chatApp || snapshot.lines.isEmpty()) {
-            val bitmap = runCatching { service.captureScreenshot() }.getOrNull()
+            val bitmap = runCatching {
+                OverlayHider.withHidden { service.captureScreenshot() }
+            }.getOrNull()
                 ?: return "这个页面连截图都拿不到（可能被应用禁止截屏），我看不见屏幕内容。"
-            val base64 = toBase64(bitmap)
+            val base64 = toBase64(ScreenMask.forModel(context, bitmap))
             val prompt = """
 这是老爸的手机截图。
 他问：$question

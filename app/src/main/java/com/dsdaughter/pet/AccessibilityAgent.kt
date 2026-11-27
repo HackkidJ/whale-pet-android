@@ -39,7 +39,7 @@ object AccessibilityAgent {
         var lastLines: List<String> = emptyList()
         repeat(14) { round ->
             if (isCancelled()) return "好，我停下了，没继续操作。"
-            val snapshot = service.snapshot()
+            val snapshot = OverlayHider.withHidden { service.snapshot() }
             lastLines = snapshot.lines
             val visionOnly = snapshot.lines.isEmpty() ||
                 snapshot.packageName == "com.tencent.mm" ||
@@ -125,7 +125,7 @@ object AccessibilityAgent {
                         var handled = false
                         repeat(2) { attempt ->
                             delay(if (attempt == 0) 1800 else 1200)
-                            val guard = runCatching { service.snapshot() }.getOrNull()
+                            val guard = runCatching { OverlayHider.withHidden { service.snapshot() } }.getOrNull()
                             val guardText = guard?.lines?.joinToString(" ").orEmpty()
                             if (guardText.contains("想要打开") || guardText.contains("始终允许")) {
                                 service.tapCheckBoxNearText("始终允许打开")

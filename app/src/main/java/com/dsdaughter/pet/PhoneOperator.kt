@@ -32,6 +32,7 @@ object PhoneOperator {
             return
         }
         val appContext = context.applicationContext
+        PetService.activeInstance?.hideForOperation()
         _running.value = true
         _step.value = "准备中…"
         overlay = OperationOverlay(appContext) { stop() }
@@ -56,6 +57,7 @@ object PhoneOperator {
                 _running.value = false
                 overlay?.hide()
                 overlay = null
+                PetService.activeInstance?.restoreAfterOperation()
                 job = null
                 onDone(report)
             }

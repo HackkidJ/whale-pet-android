@@ -44,7 +44,7 @@ class PetService : Service() {
     @Volatile
     private var idleMode = false
     private var idleSwitchJob: Job? = null
-    private var lastIdleRow = -1
+    private var lastIdleIndex = -1
     private var lastPeekAt = 0L
     private var peekInFlight = false
     private val density by lazy { resources.displayMetrics.density }
@@ -63,6 +63,7 @@ class PetService : Service() {
     override fun onCreate() {
         super.onCreate()
         running = true
+        activeInstance = this
         startForeground(NOTIFICATION_ID, buildNotification())
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
         bubble = BubbleOverlay(this, windowManager)
@@ -109,6 +110,7 @@ class PetService : Service() {
 
     override fun onDestroy() {
         running = false
+        if (activeInstance === this) activeInstance = null
         bubble.destroy()
         menu.destroy()
         scope.cancel()
@@ -176,13 +178,12 @@ class PetService : Service() {
     /** 待机：在 R1/R7/R8/R9 里随机挑一个，并每 4.5~8.5 秒随机换一个。 */
     private fun playIdle() {
         idleMode = true
-        val rows = IDLE_ROWS
-        var row = rows[random.nextInt(rows.size)]
-        if (rows.size > 1 && row == lastIdleRow) {
-            row = rows[(rows.indexOf(row) + 1) % rows.size]
+        var index = random.nextInt(IDLE_ROWS.size)
+        if (IDLE_ROWS.size > 1 && index == lastIdleIndex) {
+            index = (index + 1) % IDLE_ROWS.size
         }
-        lastIdleRow = row
-        petView.play(row, 6, 5f)
+        lastIdleIndex = index
+        petView.play(IDLE_ROWS[index], IDLE_COUNTS[index], 6f)
         startIdleSwitcher()
     }
 
@@ -194,11 +195,11 @@ class PetService : Service() {
                 if (!idleMode || dragging || sleeping || bubble.isShown || menu.isShown || commandInProgress) {
                     continue
                 }
-                val candidates = IDLE_ROWS.filter { it != lastIdleRow }
+                val candidates = IDLE_ROWS.indices.filter { it != lastIdleIndex }
                 if (candidates.isEmpty()) continue
-                val row = candidates[random.nextInt(candidates.size)]
-                lastIdleRow = row
-                petView.play(row, 6, 5f)
+                val index = candidates[random.nextInt(candidates.size)]
+                lastIdleIndex = index
+                petView.play(IDLE_ROWS[index], IDLE_COUNTS[index], 6f)
             }
         }
     }
@@ -414,6 +415,25 @@ $screenText
         }
     }
 
+    fun hideForOperation() {
+        runCatching {
+            bubble.hide()
+            menu.hide()
+            petView.visibility = View.INVISIBLE
+        }
+    }
+
+    fun restoreAfterOperation() {
+        runCatching {
+            petView.visibility = View.VISIBLE
+            if (sleeping) {
+                petView.play(ROW_SLEEPY, 8, 3f)
+            } else {
+                playIdle()
+            }
+        }
+    }
+
     private fun showMenu() {
         if (!::menu.isInitialized) return
         menu.show(params.x, params.y, sleeping) { action ->
@@ -522,8 +542,9 @@ $screenText
             "com.taobao.idlefish",
         )
         private const val ROW_SLEEPY = 5 // R6 半闭眼，最适合困倦待机
-        // 四种待机动作：R1 / R7 / R8 / R9，随机切换
-        private val IDLE_ROWS = intArrayOf(0, 6, 7, 8)
+        // 待机动作：R1 / R7 / R8 / R9 / 新 maid_idle（R10，8帧），随机切换
+        private val IDLE_ROWS = intArrayOf(0, 6, 7, 8, 9)
+        private val IDLE_COUNTS = intArrayOf(6, 6, 6, 6, 8)
         const val NOTIFICATION_ID = 4101
 
         // 精灵表行号（0-based）：R1 待机 / R2 右走 / R3 左走 / R4 招手 / R5 探头
@@ -535,6 +556,10 @@ $screenText
 
         @Volatile
         var running: Boolean = false
+            private set
+
+        @Volatile
+        var activeInstance: PetService? = null
             private set
     }
 }

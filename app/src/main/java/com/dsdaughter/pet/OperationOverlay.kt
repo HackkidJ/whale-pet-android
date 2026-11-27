@@ -30,6 +30,7 @@ class OperationOverlay(
     private var ticker: Runnable? = null
     private var startedAt = 0L
     private val handler = Handler(Looper.getMainLooper())
+    private var captureHider: OverlayHider.Hider? = null
     private val density = context.resources.displayMetrics.density
 
     fun show() {
@@ -133,6 +134,16 @@ class OperationOverlay(
         }
         runCatching { windowManager.addView(container, pillParams) }
         pill = container
+        captureHider = OverlayHider.Hider(
+            hide = {
+                borderView.visibility = View.GONE
+                container.visibility = View.GONE
+            },
+            show = {
+                borderView.visibility = View.VISIBLE
+                container.visibility = View.VISIBLE
+            },
+        ).also { OverlayHider.register(it) }
 
         animator = ValueAnimator.ofFloat(0.35f, 0.95f).apply {
             duration = 900
@@ -150,6 +161,8 @@ class OperationOverlay(
     }
 
     fun hide() {
+        captureHider?.let { OverlayHider.unregister(it) }
+        captureHider = null
         ticker?.let { handler.removeCallbacks(it) }
         ticker = null
         animator?.cancel()
