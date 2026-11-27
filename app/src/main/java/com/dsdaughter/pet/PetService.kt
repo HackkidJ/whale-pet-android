@@ -104,6 +104,11 @@ class PetService : Service() {
                 scope.launch { peekTick(force = true) }
                 return START_STICKY
             }
+            ACTION_SHOW_MESSAGE -> {
+                val msg = intent.getStringExtra(EXTRA_MESSAGE).orEmpty().trim()
+                if (msg.isNotBlank()) bubble.showProactive(msg, minMillis = 15_000L)
+                return START_STICKY
+            }
         }
         return START_STICKY
     }
@@ -423,6 +428,12 @@ $screenText
         }
     }
 
+    fun showBubbleMessage(text: String) {
+        val msg = text.trim()
+        if (msg.isBlank()) return
+        runCatching { bubble.showProactive(msg, minMillis = 15_000L) }
+    }
+
     fun restoreAfterOperation() {
         runCatching {
             petView.visibility = View.VISIBLE
@@ -529,6 +540,8 @@ $screenText
         const val ACTION_SHOW_BUBBLE = "com.dsdaughter.pet.SHOW_BUBBLE"
         const val ACTION_SHOW_MENU = "com.dsdaughter.pet.SHOW_MENU"
         const val ACTION_PEEK = "com.dsdaughter.pet.PEEK"
+        const val ACTION_SHOW_MESSAGE = "com.dsdaughter.pet.SHOW_MESSAGE"
+        const val EXTRA_MESSAGE = "message"
         private const val PEEK_HIGH_MS = 5 * 60 * 1000L
         private const val PEEK_LOW_MS = 30 * 60 * 1000L
         private val HIGH_FREQ_PACKAGES = setOf(
@@ -553,6 +566,27 @@ $screenText
         private const val ROW_WALK_LEFT = 2
         private const val ROW_WAVE = 3
         private const val ROW_PEEK = 4
+
+        /** 操作结束后把回执直接显示在桌面气泡；桌宠没在运行时先拉起再显示。 */
+        fun showResult(context: android.content.Context, text: String) {
+            val msg = text.trim()
+            if (msg.isBlank()) return
+            val instance = activeInstance
+            if (instance != null) {
+                instance.showBubbleMessage(msg)
+                return
+            }
+            val intent = android.content.Intent(context, PetService::class.java)
+                .setAction(ACTION_SHOW_MESSAGE)
+                .putExtra(EXTRA_MESSAGE, msg)
+            runCatching {
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                    context.startForegroundService(intent)
+                } else {
+                    context.startService(intent)
+                }
+            }
+        }
 
         @Volatile
         var running: Boolean = false

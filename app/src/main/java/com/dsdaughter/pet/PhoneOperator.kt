@@ -66,6 +66,7 @@ object PhoneOperator {
                 PetService.activeInstance?.restoreAfterOperation()
                 job = null
                 onDone(report)
+                PetService.showResult(appContext, report)
             }
         }
     }

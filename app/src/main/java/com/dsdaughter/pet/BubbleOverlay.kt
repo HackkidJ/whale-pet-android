@@ -372,7 +372,7 @@ class BubbleOverlay(
     }
 
     /** 视奸后的主动搭话：只显示、不聚焦、不弹键盘，按长度自动消失。 */
-    fun showProactive(text: String) {
+    fun showProactive(text: String, minMillis: Long = 0L) {
         if (isShown || text.isBlank()) return
         val dp = { value: Int -> (value * density).toInt() }
         val metrics = service.resources.displayMetrics
@@ -416,7 +416,7 @@ class BubbleOverlay(
         root = container
         windowManager.addView(container, params)
         hideJob = scope.launch {
-            kotlinx.coroutines.delay(displayMillis(text))
+            kotlinx.coroutines.delay(maxOf(displayMillis(text), minMillis))
             hide()
         }
     }
