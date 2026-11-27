@@ -20,6 +20,7 @@ object PhoneOperator {
     val step: StateFlow<String> = _step.asStateFlow()
     private var job: Job? = null
     private var overlay: OperationOverlay? = null
+    private var askOverlay: AskOverlay? = null
 
     fun start(
         context: Context,
@@ -37,6 +38,7 @@ object PhoneOperator {
         _step.value = "准备中…"
         overlay = OperationOverlay(appContext) { stop() }
         overlay?.show()
+        askOverlay = AskOverlay(appContext)
         job = scope.launch {
             var report = ""
             try {
@@ -44,17 +46,21 @@ object PhoneOperator {
                     appContext,
                     request,
                     isCancelled = { !_running.value },
-                ) { progress ->
-                    _step.value = progress
-                    overlay?.updateStep(progress)
-                    onProgress(progress)
-                }
+                    onAsk = { question -> askOverlay?.ask(question) },
+                    onProgress = { progress ->
+                        _step.value = progress
+                        overlay?.updateStep(progress)
+                        onProgress(progress)
+                    },
+                )
             } catch (_: CancellationException) {
                 report = "好，我停下了，没继续操作。"
             } catch (exc: Exception) {
                 report = "操作的时候出错了：${exc.message ?: "未知错误"}"
             } finally {
                 _running.value = false
+                askOverlay?.dismiss()
+                askOverlay = null
                 overlay?.hide()
                 overlay = null
                 PetService.activeInstance?.restoreAfterOperation()
@@ -68,6 +74,8 @@ object PhoneOperator {
         _running.value = false
         job?.cancel()
         job = null
+        askOverlay?.dismiss()
+        askOverlay = null
         overlay?.hide()
         overlay = null
     }

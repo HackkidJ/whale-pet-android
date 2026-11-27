@@ -26,6 +26,7 @@ object VisionPhoneAgent {
         service: PetAccessibilityService,
         request: String,
         isCancelled: () -> Boolean,
+        onAsk: suspend (String) -> String? = { null },
         onProgress: (String) -> Unit,
     ): String {
         val history = mutableListOf<String>()
@@ -54,6 +55,14 @@ object VisionPhoneAgent {
             }
             when (action.name) {
                 "done" -> return action.summary.ifBlank { "弄好了。" }
+                "ask_user" -> {
+                    val question = action.text.ifBlank { "我还需要一点信息，能告诉我吗？" }
+                    onProgress("我需要问你一下…")
+                    val answer = onAsk(question)
+                    if (answer == null) return "好，我先停下。"
+                    history.add("第${round + 1}步：我问「$question」，用户回答：$answer")
+                    delay(300)
+                }
                 "failed" -> return "没弄成：${action.reason.ifBlank { "这个页面我操作不了" }}"
                 "tap_xy" -> {
                     service.tapXY(action.x, action.y)
@@ -155,13 +164,14 @@ $historyText
 {"action":"input","text":"要输入的文字"}
 {"action":"paste","text":"要粘贴的文字"}
 {"action":"scroll","direction":"up|down|left|right"}
-{"action":"back"} / {"action":"home"} / {"action":"wait"}
+{"action":"back"} / {"action":"home"} / {"action":"ask_user","question":"缺少信息时向用户询问的问题"}
+{"action":"wait"}
 {"action":"done","summary":"完成了什么"}
 {"action":"failed","reason":"为什么做不了"}
 
 要求：一次只做一步；坐标根据当前截图判断；要输入文字时先点输入框，
 下一屏如果看到输入框再 input；如果 input 失败会自动长按准备粘贴，下一步在菜单里点「粘贴」。
-不要重复做过的动作，不确定就 failed。
+缺少地址/规格/数量/选哪个/是否继续等必要信息时，先 ask_user 问用户，不要瞎猜；不要重复做过的动作。
         """.trimIndent()
     }
 
@@ -181,7 +191,7 @@ $historyText
                 name = json.optString("action"),
                 x = json.optInt("x"),
                 y = json.optInt("y"),
-                text = json.optString("text"),
+                text = json.optString("text").ifBlank { json.optString("question") },
                 direction = json.optString("direction"),
                 packageName = json.optString("package"),
                 summary = json.optString("summary"),

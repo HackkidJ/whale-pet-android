@@ -24,6 +24,7 @@ object AccessibilityAgent {
         context: Context,
         request: String,
         isCancelled: () -> Boolean = { false },
+        onAsk: suspend (String) -> String? = { null },
         onProgress: (String) -> Unit,
     ): String {
         val service = PetAccessibilityService.instance
@@ -56,6 +57,7 @@ object AccessibilityAgent {
                     service,
                     request,
                     isCancelled,
+                    onAsk,
                     onProgress,
                 )
             }
@@ -81,6 +83,14 @@ object AccessibilityAgent {
             }
             when (action.name) {
                 "done" -> return action.summary.ifBlank { "弄好了。" }
+                "ask_user" -> {
+                    val question = action.text.ifBlank { "我还需要一点信息，能告诉我吗？" }
+                    onProgress("我需要问你一下…")
+                    val answer = onAsk(question)
+                    if (answer == null) return "好，我先停下。"
+                    history.add("第${round + 1}步：我问「$question」，用户回答：$answer")
+                    delay(300)
+                }
                 "failed" -> return "没弄成：${action.reason.ifBlank { "我看不明白这个页面" }}"
                 "tap_text" -> {
                     onProgress("我点一下「${action.text}」…")
@@ -210,10 +220,11 @@ $historyText
 {"action":"open_app","package":"目标应用名或包名（不能填鲸鲸自己）"}
 {"action":"screenshot"}  截图保存到相册
 {"action":"share_image","package":"qq"}  把最近一张截图分享到指定 App
+{"action":"ask_user","question":"缺少信息时向用户询问的问题（地址/规格/数量/选哪个/是否继续）"}
 {"action":"wait"}
 {"action":"done","summary":"完成了什么"}
 {"action":"failed","reason":"为什么做不了"}
-注意：一次只做一步；不确定就 failed；输入前先点输入框；不要重复已经做过的动作。
+注意：一次只做一步；缺地址/规格/数量/选哪个/是否继续等必要信息时，先 ask_user 问用户，不要瞎猜，也不要直接 failed；输入前先点输入框；不要重复已经做过的动作。
         """.trimIndent()
     }
 
@@ -225,7 +236,7 @@ $historyText
             val json = JSONObject(raw.substring(start, end + 1))
             Action(
                 name = json.optString("action"),
-                text = json.optString("text"),
+                text = json.optString("text").ifBlank { json.optString("question") },
                 x = json.optInt("x"),
                 y = json.optInt("y"),
                 direction = json.optString("direction"),

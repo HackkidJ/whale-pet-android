@@ -16,6 +16,13 @@ object PhoneIntent {
         "播放", "暂停", "调高", "调低", "调到", "设置一下", "打开通知", "点赞", "关注",
         // 泛请求
         "帮我弄", "帮我点", "帮我打开", "帮我搜", "帮我找", "帮我发", "帮我把",
+        // 操作类/点单类（没提 App 也可以算任务）
+        "操作", "帮我操作", "下单", "点餐", "点外卖", "点杯", "点一杯", "来一杯", "来杯", "点",
+        "要一杯", "叫一份", "买", "订", "预订",
+    )
+    private val objectActionWords = listOf(
+        "操作", "点", "打开", "下单", "买", "发", "搜", "找", "输入", "截图",
+        "播放", "设置", "弄", "搞", "继续", "接着", "重新", "再来", "帮我", "给我",
     )
     private val englishVerbs = listOf(
         "open", "click", "tap", "search", "type", "input", "send", "message", "go to", "play",
@@ -53,15 +60,22 @@ object PhoneIntent {
 
     fun isTask(text: String): Boolean {
         val value = text.trim()
-        if (value.isEmpty() || value.length > 120) return false
+        if (value.isEmpty() || value.length > 300) return false
         if (value.startsWith("操作:") || value.startsWith("操作：")) return true
         val lowered = value.lowercase()
         val hasVerb = verbs.any { value.contains(it) } || englishVerbs.any { lowered.contains(it) }
         if (!hasVerb) return false
-        // 提到 App 才算明确任务；"给谁发消息"通常带 微信/QQ，允许 App 名或 联系方式
+        // 明确提到 App：算任务
         if (AppCatalog.mentionsApp(value)) return true
-        // 发给具体联系人 / 联系人相关，也视为任务
+        // 发消息/联系人相关
         if (value.contains("发") && (value.contains("给") || value.contains("告诉") || value.contains("回复"))) {
+            return true
+        }
+        // 没提 App，但只要带"操作/帮我/继续/重新"等意图 + 具体动作，也交给操作代理
+        val hasObjectAction = objectActionWords.any { value.contains(it) }
+        val hasIntent = listOf("帮我", "给我", "操作", "继续", "接着", "重新", "再来", "吧")
+            .any { value.contains(it) }
+        if (hasObjectAction && hasIntent && !value.contains("天气") && !value.contains("新闻")) {
             return true
         }
         return false

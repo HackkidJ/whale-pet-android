@@ -13,6 +13,23 @@ import java.io.File
 class DebugReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (!BuildConfig.DEBUG) return
+        if (intent.action == "com.dsdaughter.pet.DEBUG_INTENT") {
+            val text = intent.getStringExtra("text").orEmpty()
+            android.util.Log.i(
+                "WhaleIntent",
+                "text=$text task=${PhoneIntent.isTask(text)} look=${PhoneIntent.isLookRequest(text)} balance=${PhoneIntent.isBalanceRequest(text)}",
+            )
+            return
+        }
+        if (intent.action == "com.dsdaughter.pet.DEBUG_ASK") {
+            val question = intent.getStringExtra("question") ?: "测试：你要喝什么？"
+            val overlay = AskOverlay(context)
+            CoroutineScope(Dispatchers.Main).launch {
+                val answer = overlay.ask(question)
+                android.util.Log.i("WhaleAsk", "answer=$answer")
+            }
+            return
+        }
         if (intent.action == "com.dsdaughter.pet.DEBUG_OVERLAY") {
             val overlay = OperationOverlay(context) {}
             overlay.show()
